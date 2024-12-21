@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspace Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    #chat-box {
+      border: 1px solid #ccc;
+      width: 400px;
+      height: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+      padding: 10px;
+    }
+    #message-input {
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Workspace Chat</h2>
+<div>
+  <label for="workspace-id">Enter Workspace ID: </label>
+  <input type="text" id="workspace-id">
+  <button onclick="joinWorkspace()">Join Workspace</button>
+</div>
+
+<div id="chat-box"></div>
+
+<input type="text" id="message-input" placeholder="Enter message">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+  let socket;
+  let workspaceId;
+
+  // Function to join a workspace
+  function joinWorkspace() {
+    workspaceId = document.getElementById('workspace-id').value;
+    if (workspaceId === "") {
+      alert("Please enter a workspace ID.");
+      return;
+    }
+
+    // Connect to WebSocket using ngrok URL (or Heroku URL if deployed)
+    socket = new WebSocket('ws://localhost:3000');  
+
+    socket.onopen = function() {
+      console.log('Connected to WebSocket server');
+      socket.send(JSON.stringify({
+        type: 'join',
+        workspaceId: workspaceId
+      }));
+    };
+
+    // Ensure this onmessage handler is only set once
+    socket.onmessage = function(event) {
+      const messageData = JSON.parse(event.data);
+      console.log("Received message:", messageData);
+      displayMessage(messageData.user, messageData.message);
+    };
+
+    socket.onclose = function() {
+      console.log('Disconnected from WebSocket server');
+    };
+  }
+
+  // Function to send a message
+  function sendMessage() {
+    const message = document.getElementById('message-input').value;
+    const user = "User" + Math.floor(Math.random() * 100); // Random user ID for simplicity
+
+    // Ensure that the message is only sent if the socket is open
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'message',
+        workspaceId: workspaceId,
+        user: user,
+        message: message
+      }));
+
+      displayMessage(user, message);  // Display the message locally
+      document.getElementById('message-input').value = '';  // Clear the input field
+    } else {
+      alert("Please join a workspace first.");
+    }
+  }
+
+  // Function to display a message in the chat box
+  function displayMessage(user, message) {
+    const chatBox = document.getElementById('chat-box');
+    const messageElement = document.createElement('div');
+    messageElement.textContent = `${user}: ${message}`;
+    chatBox.appendChild(messageElement);
+    chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to the latest message
+  }
+</script>
+
+</body>
+</html>
